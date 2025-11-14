@@ -72,7 +72,7 @@ export default function PnLChart() {
   const winRate = data.length > 0 ? (winningDays / data.length) * 100 : 0;
 
   const formatCurrency = (value: number) => {
-    return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `₹${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -195,7 +195,8 @@ export default function PnLChart() {
               />
               <YAxis 
                 stroke="#9ca3af"
-                tickFormatter={(value) => `$${value.toLocaleString()}`}
+                tickFormatter={(value) => `₹${value.toLocaleString()}`}
+                width={80}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
@@ -221,7 +222,8 @@ export default function PnLChart() {
               />
               <YAxis 
                 stroke="#9ca3af"
-                tickFormatter={(value) => `$${value.toLocaleString()}`}
+                tickFormatter={(value) => `₹${value.toLocaleString()}`}
+                width={80}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend />

@@ -20,7 +20,7 @@ const tableIdColumns: Record<TableName, string> = {
   'Signals': 'signalId',
   'Orders': 'orderId',
   'Trades': 'tradeId',
-  'Pnl': 'PnlId'
+  'Pnl': 'pnlId'
 };
 
 export default function TableViewer() {

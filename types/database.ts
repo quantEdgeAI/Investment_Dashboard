@@ -159,7 +159,7 @@ export interface Database {
       }
       Pnl: {
         Row: {
-          PnlId: number
+          pnlId: number
           tradeid: number
           tradingsymbol: string
           underlier_symbol: string

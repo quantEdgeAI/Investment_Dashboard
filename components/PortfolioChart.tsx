@@ -73,7 +73,7 @@ export default function PortfolioChart() {
   const drawdown = peakValue > 0 ? ((peakValue - currentValue) / peakValue) * 100 : 0;
 
   const formatCurrency = (value: number) => {
-    return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `₹${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -194,7 +194,8 @@ export default function PortfolioChart() {
               />
               <YAxis 
                 stroke="#9ca3af"
-                tickFormatter={(value) => `$${value.toLocaleString()}`}
+                tickFormatter={(value) => `₹${value.toLocaleString()}`}
+                width={80}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend />

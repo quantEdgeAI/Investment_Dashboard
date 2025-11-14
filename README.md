@@ -56,65 +56,99 @@ The dashboard expects the following tables in your Supabase database:
 ### Signals Table
 ```sql
 CREATE TABLE "Signals" (
-  id SERIAL PRIMARY KEY,
-  created_at TIMESTAMP DEFAULT NOW(),
-  symbol TEXT,
-  signal_type TEXT,
-  price NUMERIC,
-  quantity NUMERIC,
-  timestamp TIMESTAMP,
-  strategy TEXT,
-  confidence NUMERIC
+  "signalId" SERIAL PRIMARY KEY,
+  symbol TEXT NOT NULL,
+  date TEXT NOT NULL,
+  open NUMERIC NOT NULL,
+  high NUMERIC NOT NULL,
+  low NUMERIC NOT NULL,
+  close NUMERIC NOT NULL,
+  st1 NUMERIC NOT NULL,
+  st1_dir NUMERIC NOT NULL,
+  st2 NUMERIC NOT NULL,
+  st2_dir NUMERIC NOT NULL,
+  adx NUMERIC NOT NULL,
+  plus_di NUMERIC NOT NULL,
+  minus_di NUMERIC NOT NULL,
+  lr_slope NUMERIC NOT NULL,
+  lr_accel NUMERIC NOT NULL,
+  both_st_bullish NUMERIC NOT NULL,
+  strong_trend NUMERIC NOT NULL,
+  rising_trend NUMERIC NOT NULL,
+  accelerating NUMERIC NOT NULL,
+  green_candle NUMERIC NOT NULL,
+  signal TEXT NOT NULL,
+  strategy TEXT NOT NULL,
+  profit_pct NUMERIC NOT NULL,
+  stop_loss_pct NUMERIC NOT NULL,
+  status NUMERIC NOT NULL
 );
 ```
 
 ### Orders Table
 ```sql
 CREATE TABLE "Orders" (
-  id SERIAL PRIMARY KEY,
-  created_at TIMESTAMP DEFAULT NOW(),
-  order_id TEXT,
-  symbol TEXT,
-  order_type TEXT,
-  side TEXT,
-  quantity NUMERIC,
-  price NUMERIC,
-  status TEXT,
-  timestamp TIMESTAMP,
-  filled_quantity NUMERIC,
-  average_price NUMERIC
+  "orderId" SERIAL PRIMARY KEY,
+  date TEXT NOT NULL,
+  tradingsymbol TEXT NOT NULL,
+  instrument_token NUMERIC NOT NULL,
+  underlier_symbol TEXT NOT NULL,
+  side TEXT NOT NULL,
+  quantity NUMERIC NOT NULL,
+  strategy TEXT NOT NULL,
+  price NUMERIC NOT NULL,
+  stoploss_price NUMERIC NOT NULL,
+  target_price NUMERIC NOT NULL,
+  "signalId" NUMERIC NOT NULL,
+  timestamp TEXT NOT NULL
 );
 ```
 
-### trades Table
+### Trades Table
 ```sql
-CREATE TABLE trades (
-  id SERIAL PRIMARY KEY,
-  created_at TIMESTAMP DEFAULT NOW(),
-  trade_id TEXT,
-  symbol TEXT,
-  side TEXT,
-  quantity NUMERIC,
-  entry_price NUMERIC,
-  exit_price NUMERIC,
-  entry_time TIMESTAMP,
-  exit_time TIMESTAMP,
-  status TEXT,
-  pnl NUMERIC
+CREATE TABLE "Trades" (
+  "tradeId" SERIAL PRIMARY KEY,
+  tradingsymbol TEXT NOT NULL,
+  instrument_token NUMERIC NOT NULL,
+  underlier_symbol TEXT NOT NULL,
+  price NUMERIC NOT NULL,
+  quantity NUMERIC NOT NULL,
+  date TEXT NOT NULL,
+  "orderId" NUMERIC NOT NULL,
+  side TEXT NOT NULL,
+  strategy TEXT NOT NULL
 );
 ```
 
 ### Pnl Table
 ```sql
 CREATE TABLE "Pnl" (
-  id SERIAL PRIMARY KEY,
-  created_at TIMESTAMP DEFAULT NOW(),
-  date DATE,
-  realized_pnl NUMERIC,
-  unrealized_pnl NUMERIC,
-  total_pnl NUMERIC,
-  portfolio_value NUMERIC,
-  trades_count INTEGER
+  "pnlId" SERIAL PRIMARY KEY,
+  tradeid NUMERIC NOT NULL,
+  tradingsymbol TEXT NOT NULL,
+  underlier_symbol TEXT NOT NULL,
+  instrument_token NUMERIC NOT NULL,
+  buy_price NUMERIC NOT NULL,
+  sell_price NUMERIC NOT NULL,
+  buy_date TEXT NOT NULL,
+  sell_date TEXT NOT NULL,
+  comment TEXT NOT NULL,
+  delta NUMERIC NOT NULL,
+  strategy TEXT NOT NULL,
+  asset_class TEXT NOT NULL
+);
+```
+
+### OpenPositions Table
+```sql
+CREATE TABLE "OpenPositions" (
+  orderid SERIAL PRIMARY KEY,
+  date TEXT NOT NULL,
+  tradingsymbol TEXT NOT NULL,
+  quantity NUMERIC NOT NULL,
+  side TEXT NOT NULL,
+  buy_price NUMERIC NOT NULL,
+  curr_price NUMERIC NOT NULL
 );
 ```
 

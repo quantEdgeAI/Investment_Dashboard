@@ -40,15 +40,35 @@ export default function PortfolioChart() {
 
       if (fetchError) throw fetchError;
 
-      // Calculate cumulative portfolio value from delta
+      // Group by date and aggregate
+      const groupedByDate = (fetchedData || []).reduce((acc: any, item: any) => {
+        const date = item.sell_date;
+        if (!acc[date]) {
+          acc[date] = {
+            date: date,
+            delta: 0,
+            trades_count: 0,
+          };
+        }
+        acc[date].delta += item.delta;
+        acc[date].trades_count += 1;
+        return acc;
+      }, {});
+
+      // Convert to array and sort by date
+      const aggregatedData = Object.values(groupedByDate).sort((a: any, b: any) => 
+        a.date.localeCompare(b.date)
+      );
+
+      // Calculate cumulative portfolio value from aggregated delta
       let cumulative = 100000; // Starting portfolio value
-      const processedData = (fetchedData || []).map((item: any) => {
+      const processedData = aggregatedData.map((item: any) => {
         cumulative += item.delta;
         return {
-          date: item.sell_date,
+          date: item.date,
           cumulative_value: cumulative,
           delta: item.delta,
-          trades_count: 1,
+          trades_count: item.trades_count,
         };
       });
 
@@ -132,7 +152,8 @@ export default function PortfolioChart() {
               type="date"
               value={dateRange.from}
               onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
-              className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:dark]"
+              style={{ colorScheme: 'dark' }}
             />
           </div>
           <div className="flex-1 min-w-[200px]">
@@ -143,10 +164,19 @@ export default function PortfolioChart() {
               type="date"
               value={dateRange.to}
               onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
-              className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:dark]"
+              style={{ colorScheme: 'dark' }}
             />
           </div>
-          <div className="flex items-end">
+          <div className="flex gap-2 items-end">
+            {(dateRange.from || dateRange.to) && (
+              <button
+                onClick={() => setDateRange({ from: '', to: '' })}
+                className="px-4 py-2 bg-destructive/20 text-destructive rounded-md hover:bg-destructive/30 transition-colors text-sm"
+              >
+                Clear Dates
+              </button>
+            )}
             <button
               onClick={fetchPortfolioData}
               disabled={loading}
@@ -158,6 +188,15 @@ export default function PortfolioChart() {
           </div>
         </div>
       </div>
+
+      {/* Active Filters Display */}
+      {(dateRange.from || dateRange.to) && (
+        <div className="bg-primary/10 border border-primary/30 text-primary px-4 py-2 rounded-lg text-sm">
+          <span className="font-medium">Active Filters:</span>
+          {dateRange.from && <span className="ml-2">From: {dateRange.from}</span>}
+          {dateRange.to && <span className="ml-2">To: {dateRange.to}</span>}
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (

@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { LayoutDashboard, Database, TrendingUp, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Database, TrendingUp, BarChart3, PieChart } from 'lucide-react';
 import TableViewer from '@/components/TableViewer';
 import OpenPositions from '@/components/OpenPositions';
 import PnLChart from '@/components/PnLChart';
 import PortfolioChart from '@/components/PortfolioChart';
+import PnLSymbol from '@/components/PnLSymbol';
 
-type TabType = 'tables' | 'positions' | 'pnl' | 'portfolio';
+type TabType = 'tables' | 'positions' | 'pnl' | 'portfolio' | 'pnlsymbol';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('tables');
@@ -16,6 +17,7 @@ export default function Home() {
     { id: 'tables' as TabType, label: 'Data Tables', icon: Database },
     { id: 'positions' as TabType, label: 'Open Positions', icon: LayoutDashboard },
     { id: 'pnl' as TabType, label: 'P&L Analysis', icon: TrendingUp },
+    { id: 'pnlsymbol' as TabType, label: 'P&L Symbol', icon: PieChart },
     { id: 'portfolio' as TabType, label: 'Portfolio Value', icon: BarChart3 },
   ];
 
@@ -67,6 +69,7 @@ export default function Home() {
         {activeTab === 'tables' && <TableViewer />}
         {activeTab === 'positions' && <OpenPositions />}
         {activeTab === 'pnl' && <PnLChart />}
+        {activeTab === 'pnlsymbol' && <PnLSymbol />}
         {activeTab === 'portfolio' && <PortfolioChart />}
       </div>
     </main>

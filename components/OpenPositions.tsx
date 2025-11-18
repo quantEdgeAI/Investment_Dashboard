@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
+import { useWebSocket } from '@/lib/useWebSocket';
+import { TrendingUp, TrendingDown, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 interface Position {
   orderid: number;
@@ -19,6 +21,21 @@ export default function OpenPositions() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [wsEnabled, setWsEnabled] = useState(true);
+
+  // Extract unique symbols from positions for WebSocket subscription
+  const symbols = useMemo(
+    () => positions.map((pos) => pos.tradingsymbol),
+    [positions]
+  );
+
+  // WebSocket connection for real-time prices
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || '';
+  const { isConnected, error: wsError, prices } = useWebSocket({
+    url: wsUrl,
+    symbols,
+    enabled: wsEnabled && wsUrl.length > 0,
+  });
 
   const fetchOpenPositions = async () => {
     setLoading(true);
@@ -34,7 +51,7 @@ export default function OpenPositions() {
 
       if (fetchError) throw fetchError;
 
-      // Calculate delta based on side, quantity, buy_price, and curr_price
+      // Store positions with initial curr_price from DB
       const positionsWithDelta = (data || []).map((pos: any) => {
         console.log('Processing position:', pos);
         console.log('Side:', pos.side, 'Buy Price:', pos.buy_price, 'Curr Price:', pos.curr_price, 'Qty:', pos.quantity);
@@ -67,8 +84,27 @@ export default function OpenPositions() {
     fetchOpenPositions();
   }, []);
 
-  const totalDelta = positions.reduce((sum, pos) => sum + (pos.delta || 0), 0);
-  const totalValue = positions.reduce((sum, pos) => sum + pos.curr_price * pos.quantity, 0);
+  // Calculate positions with real-time prices from WebSocket
+  const positionsWithRealtimePrices = useMemo(() => {
+    return positions.map((pos) => {
+      // Use WebSocket price if available, otherwise fall back to DB price
+      const currentPrice = prices[pos.tradingsymbol] ?? pos.curr_price;
+      
+      // Recalculate delta with real-time price
+      const delta = pos.side.toLowerCase() === 'buy'
+        ? (currentPrice - pos.buy_price) * pos.quantity
+        : (pos.buy_price - currentPrice) * pos.quantity;
+
+      return {
+        ...pos,
+        curr_price: currentPrice,
+        delta,
+      };
+    });
+  }, [positions, prices]);
+
+  const totalDelta = positionsWithRealtimePrices.reduce((sum, pos) => sum + (pos.delta || 0), 0);
+  const totalValue = positionsWithRealtimePrices.reduce((sum, pos) => sum + pos.curr_price * pos.quantity, 0);
 
   return (
     <div className="space-y-4">
@@ -94,7 +130,24 @@ export default function OpenPositions() {
 
       {/* Controls */}
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-foreground">Position Details</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-semibold text-foreground">Position Details</h2>
+          {wsUrl && (
+            <div className="flex items-center gap-2 text-sm">
+              {isConnected ? (
+                <>
+                  <Wifi className="h-4 w-4 text-green-500" />
+                  <span className="text-green-500">Live</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-4 w-4 text-yellow-500" />
+                  <span className="text-yellow-500">Connecting...</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
         <button
           onClick={fetchOpenPositions}
           disabled={loading}
@@ -111,23 +164,33 @@ export default function OpenPositions() {
           {error}
         </div>
       )}
+      {wsError && (
+        <div className="bg-yellow-500/10 border border-yellow-500 text-yellow-600 px-4 py-3 rounded-lg">
+          WebSocket: {wsError} (Using last known prices)
+        </div>
+      )}
 
       {/* Positions Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <RefreshCw className="h-8 w-8 animate-spin text-primary" />
         </div>
-      ) : positions.length === 0 ? (
+      ) : positionsWithRealtimePrices.length === 0 ? (
         <div className="bg-card rounded-lg border border-border p-12 text-center">
           <p className="text-muted-foreground">No open positions</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {positions.map((position) => (
+          {positionsWithRealtimePrices.map((position) => (
             <div key={position.orderid} className="bg-card rounded-lg border border-border p-4 hover:border-primary transition-colors">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">{position.tradingsymbol}</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-lg font-semibold text-foreground">{position.tradingsymbol}</h3>
+                    <span className="text-xs text-muted-foreground">
+                      {format(parseISO(position.date), 'dd-MM-yyyy')}
+                    </span>
+                  </div>
                   <span className={`text-xs px-2 py-1 rounded ${
                     position.side === 'buy' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
                   }`}>

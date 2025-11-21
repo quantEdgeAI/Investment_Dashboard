@@ -61,7 +61,7 @@ export default function PortfolioChart() {
       );
 
       // Calculate cumulative portfolio value from aggregated delta
-      let cumulative = 100000; // Starting portfolio value
+      let cumulative = 2100000; // Starting portfolio value
       const processedData = aggregatedData.map((item: any) => {
         cumulative += item.delta;
         return {
@@ -86,8 +86,8 @@ export default function PortfolioChart() {
   }, [dateRange]);
 
   const currentValue = data.length > 0 ? data[data.length - 1].cumulative_value : 0;
-  const initialValue = data.length > 0 ? data[0].cumulative_value : 0;
-  const totalReturn = initialValue > 0 ? ((currentValue - initialValue) / initialValue) * 100 : 0;
+  const startingPortfolioValue = 2100000; // Starting portfolio value
+  const totalReturn = startingPortfolioValue > 0 ? ((currentValue - startingPortfolioValue) / startingPortfolioValue) * 100 : 0;
   const totalTrades = data.reduce((sum, item) => sum + (item.trades_count || 0), 0);
   const peakValue = data.length > 0 ? Math.max(...data.map(d => d.cumulative_value)) : 0;
   const drawdown = peakValue > 0 ? ((peakValue - currentValue) / peakValue) * 100 : 0;

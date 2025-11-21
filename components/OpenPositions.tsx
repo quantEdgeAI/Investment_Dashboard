@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useWebSocket } from '@/lib/useWebSocket';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { TrendingUp, TrendingDown, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
@@ -21,21 +21,27 @@ export default function OpenPositions() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [wsEnabled, setWsEnabled] = useState(true);
+
+  // Use WebSocket context for persistent connection
+  const { isConnected, error: wsError, prices, subscribe } = useWebSocketContext();
 
   // Extract unique symbols from positions for WebSocket subscription
-  const symbols = useMemo(
-    () => positions.map((pos) => pos.tradingsymbol),
-    [positions]
-  );
+  // Only update when the actual symbol list changes, not when position objects change
+  const symbols = useMemo(() => {
+    const symbolList = positions.map((pos) => pos.tradingsymbol);
+    return Array.from(new Set(symbolList)); // Remove duplicates
+  }, [positions.map(p => p.tradingsymbol).join(',')]);
 
-  // WebSocket connection for real-time prices
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || '';
-  const { isConnected, error: wsError, prices } = useWebSocket({
-    url: wsUrl,
-    symbols,
-    enabled: wsEnabled && wsUrl.length > 0,
-  });
+  // Subscribe to symbols when they change
+  // Keep track of previous symbols to only unsubscribe from removed ones
+  useEffect(() => {
+    if (symbols.length > 0) {
+      console.log('OpenPositions subscribing to:', symbols);
+      subscribe(symbols);
+    }
+    // No cleanup - keep subscriptions active even when component unmounts
+    // This allows prices to continue updating when switching tabs
+  }, [symbols, subscribe]);
 
   const fetchOpenPositions = async () => {
     setLoading(true);
@@ -132,21 +138,19 @@ export default function OpenPositions() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold text-foreground">Position Details</h2>
-          {wsUrl && (
-            <div className="flex items-center gap-2 text-sm">
-              {isConnected ? (
-                <>
-                  <Wifi className="h-4 w-4 text-green-500" />
-                  <span className="text-green-500">Live</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="h-4 w-4 text-yellow-500" />
-                  <span className="text-yellow-500">Connecting...</span>
-                </>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-sm">
+            {isConnected ? (
+              <>
+                <Wifi className="h-4 w-4 text-green-500" />
+                <span className="text-green-500">Live</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-4 w-4 text-yellow-500" />
+                <span className="text-yellow-500">Connecting...</span>
+              </>
+            )}
+          </div>
         </div>
         <button
           onClick={fetchOpenPositions}

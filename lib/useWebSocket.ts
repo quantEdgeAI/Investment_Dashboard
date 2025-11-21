@@ -34,7 +34,7 @@ export function useWebSocket({
   }, [symbols]);
 
   const connect = useCallback(() => {
-    if (!enabled || !url || symbols.length === 0) {
+    if (!enabled || !url) {
       return;
     }
 
@@ -116,7 +116,7 @@ export function useWebSocket({
       console.error('Error creating WebSocket:', err);
       setError('Failed to create WebSocket connection');
     }
-  }, [url, symbols, enabled, reconnectInterval, onPriceUpdate]);
+  }, [url, enabled, reconnectInterval, onPriceUpdate]);
 
   // Subscribe to new symbols
   const subscribe = useCallback((newSymbols: string[]) => {
@@ -159,8 +159,9 @@ export function useWebSocket({
 
   // Update subscriptions when symbols change
   useEffect(() => {
-    if (isConnected && wsRef.current) {
+    if (isConnected && wsRef.current && wsRef.current.readyState === WebSocket.OPEN && symbols.length > 0) {
       // Send updated symbol list
+      console.log('Updating WebSocket subscriptions:', symbols);
       wsRef.current.send(
         JSON.stringify({
           action: 'subscribe',

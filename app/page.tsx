@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { LayoutDashboard, Database, TrendingUp, BarChart3, PieChart } from 'lucide-react';
+import { LayoutDashboard, Database, TrendingUp, BarChart3, PieChart, Settings } from 'lucide-react';
 import TableViewer from '@/components/TableViewer';
 import OpenPositions from '@/components/OpenPositions';
 import PnLChart from '@/components/PnLChart';
 import PortfolioChart from '@/components/PortfolioChart';
 import PnLSymbol from '@/components/PnLSymbol';
+import SupabaseDiagnostics from '@/components/SupabaseDiagnostics';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
 
-type TabType = 'tables' | 'positions' | 'pnl' | 'portfolio' | 'pnlsymbol';
+type TabType = 'tables' | 'positions' | 'pnl' | 'portfolio' | 'pnlsymbol' | 'diagnostics';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('tables');
@@ -22,6 +23,7 @@ export default function Home() {
     { id: 'pnl' as TabType, label: 'P&L Analysis', icon: TrendingUp },
     { id: 'pnlsymbol' as TabType, label: 'P&L Symbol', icon: PieChart },
     { id: 'portfolio' as TabType, label: 'Portfolio Value', icon: BarChart3 },
+    { id: 'diagnostics' as TabType, label: 'Diagnostics', icon: Settings },
   ];
 
   return (
@@ -75,6 +77,7 @@ export default function Home() {
           {activeTab === 'pnl' && <PnLChart />}
           {activeTab === 'pnlsymbol' && <PnLSymbol />}
           {activeTab === 'portfolio' && <PortfolioChart />}
+          {activeTab === 'diagnostics' && <SupabaseDiagnostics />}
         </div>
       </main>
     </WebSocketProvider>

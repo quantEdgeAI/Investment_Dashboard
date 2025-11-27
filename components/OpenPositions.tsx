@@ -15,6 +15,8 @@ interface Position {
   curr_price: number;
   date: string;
   delta?: number;
+  stoploss_price?: number;
+  target_price?: number;
 }
 
 export default function OpenPositions() {
@@ -23,7 +25,7 @@ export default function OpenPositions() {
   const [error, setError] = useState<string | null>(null);
 
   // Use WebSocket context for persistent connection
-  const { isConnected, error: wsError, prices, subscribe } = useWebSocketContext();
+  const { isConnected, error: wsError, prices, priceRanges, subscribe } = useWebSocketContext();
 
   // Extract unique symbols from positions for WebSocket subscription
   // Only update when the actual symbol list changes, not when position objects change
@@ -57,6 +59,30 @@ export default function OpenPositions() {
 
       if (fetchError) throw fetchError;
 
+      // Fetch Orders to get stoploss and target prices
+      const uniqueSymbols = Array.from(new Set((data || []).map((p: any) => p.tradingsymbol)));
+      let ordersMap: Record<string, { stoploss_price: number; target_price: number }> = {};
+
+      if (uniqueSymbols.length > 0) {
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('Orders')
+          .select('tradingsymbol, stoploss_price, target_price, date')
+          .in('tradingsymbol', uniqueSymbols)
+          .order('date', { ascending: false });
+
+        if (!ordersError && ordersData) {
+          // Map latest order details to symbol
+          ordersData.forEach((order: any) => {
+            if (!ordersMap[order.tradingsymbol]) {
+              ordersMap[order.tradingsymbol] = {
+                stoploss_price: order.stoploss_price,
+                target_price: order.target_price,
+              };
+            }
+          });
+        }
+      }
+
       // Store positions with initial curr_price from DB
       const positionsWithDelta = (data || []).map((pos: any) => {
         console.log('Processing position:', pos);
@@ -70,9 +96,13 @@ export default function OpenPositions() {
 
         console.log('Calculated delta:', delta);
 
+        const orderDetails = ordersMap[pos.tradingsymbol] || {};
+
         return {
           ...pos,
           delta,
+          stoploss_price: orderDetails.stoploss_price,
+          target_price: orderDetails.target_price,
         };
       });
 
@@ -223,6 +253,50 @@ export default function OpenPositions() {
                   <span className="text-muted-foreground">Current Price:</span>
                   <span className="text-foreground font-medium">₹{position.curr_price.toFixed(2)}</span>
                 </div>
+
+                {/* Price Range Bar */}
+                {priceRanges[position.tradingsymbol] && (
+                  <div className="py-2">
+                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                      <div>
+                        <div>Low</div>
+                        <div className="font-medium text-foreground">
+                          {priceRanges[position.tradingsymbol].low.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div>High</div>
+                        <div className="font-medium text-foreground">
+                          {priceRanges[position.tradingsymbol].high.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative h-1.5 bg-secondary rounded-full mt-1">
+                      <div className="absolute w-full h-full bg-green-500 rounded-full" />
+                      <div 
+                        className="absolute top-full mt-1 -translate-x-1/2 transition-all duration-300"
+                        style={{ 
+                          left: `${Math.min(100, Math.max(0, ((position.curr_price - priceRanges[position.tradingsymbol].low) / (priceRanges[position.tradingsymbol].high - priceRanges[position.tradingsymbol].low || 1)) * 100))}%` 
+                        }}
+                      >
+                        <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[6px] border-b-muted-foreground"></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {position.stoploss_price && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Stop Loss:</span>
+                    <span className="text-red-500 font-medium">₹{position.stoploss_price.toFixed(2)}</span>
+                  </div>
+                )}
+                {position.target_price && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Target:</span>
+                    <span className="text-green-500 font-medium">₹{position.target_price.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between pt-2 border-t border-border">
                   <span className="text-muted-foreground">Unrealized P&L:</span>
                   <span className={`font-bold ${(position.delta || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>

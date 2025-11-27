@@ -12,6 +12,7 @@ interface WebSocketContextType {
   isConnected: boolean;
   error: string | null;
   prices: Record<string, number>;
+  priceRanges: Record<string, { low: number; high: number }>;
   subscribe: (symbols: string[]) => void;
   unsubscribe: (symbols: string[]) => void;
   reconnect: () => void;
@@ -28,6 +29,7 @@ interface WebSocketProviderProps {
 }
 
 const PRICE_CACHE_KEY = 'websocket_price_cache';
+const RANGE_CACHE_KEY = 'websocket_range_cache';
 const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export function WebSocketProvider({ 
@@ -56,6 +58,31 @@ export function WebSocketProvider({
         }
       } catch (err) {
         console.error('Error loading cached prices:', err);
+      }
+    }
+    return {};
+  });
+
+  const [priceRanges, setPriceRanges] = useState<Record<string, { low: number; high: number }>>(() => {
+    // Load cached ranges from localStorage on initialization
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(RANGE_CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          // Check if cache is still valid (same day)
+          const cachedDate = new Date(timestamp).toDateString();
+          const currentDate = new Date().toDateString();
+          if (cachedDate === currentDate) {
+            console.log('Loaded cached price ranges:', Object.keys(data).length, 'symbols');
+            return data;
+          } else {
+            console.log('Price range cache expired (new day), clearing...');
+            localStorage.removeItem(RANGE_CACHE_KEY);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading cached ranges:', err);
       }
     }
     return {};
@@ -175,6 +202,49 @@ export function WebSocketProvider({
         console.error('Error caching prices:', err);
       }
     }
+  }, [prices]);
+
+  // Cache price ranges to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && Object.keys(priceRanges).length > 0) {
+      try {
+        localStorage.setItem(RANGE_CACHE_KEY, JSON.stringify({
+          data: priceRanges,
+          timestamp: Date.now()
+        }));
+      } catch (err) {
+        console.error('Error caching price ranges:', err);
+      }
+    }
+  }, [priceRanges]);
+
+  // Update price ranges when prices change
+  useEffect(() => {
+    setPriceRanges(prev => {
+      const next = { ...prev };
+      let hasChanges = false;
+      
+      Object.entries(prices).forEach(([symbol, price]) => {
+        if (typeof price !== 'number') return;
+        
+        const current = next[symbol];
+        if (!current) {
+          // If we don't have a range yet, start with this price
+          next[symbol] = { low: price, high: price };
+          hasChanges = true;
+        } else {
+          if (price < current.low) {
+            next[symbol] = { ...current, low: price };
+            hasChanges = true;
+          }
+          if (price > current.high) {
+            next[symbol] = { ...current, high: price };
+            hasChanges = true;
+          }
+        }
+      });
+      return hasChanges ? next : prev;
+    });
   }, [prices]);
 
   const connect = useCallback(() => {
@@ -366,6 +436,7 @@ export function WebSocketProvider({
     isConnected,
     error,
     prices,
+    priceRanges,
     subscribe,
     unsubscribe,
     reconnect: connect,

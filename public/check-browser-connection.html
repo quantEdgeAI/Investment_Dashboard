@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Connection Diagnostics</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        h1 {
+            color: #4ade80;
+        }
+        .result {
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .success {
+            border-left: 4px solid #4ade80;
+        }
+        .error {
+            border-left: 4px solid #ef4444;
+        }
+        .info {
+            border-left: 4px solid #3b82f6;
+        }
+        button {
+            background: #4ade80;
+            color: #1a1a1a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #22c55e;
+        }
+        pre {
+            margin: 5px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Supabase Connection Diagnostics</h1>
+    <button onclick="runDiagnostics()">Run Diagnostics</button>
+    <div id="results"></div>
+
+    <script>
+        async function runDiagnostics() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="result info">Running diagnostics...</div>';
+            
+            const results = [];
+            
+            // Check 1: Browser Connection Info
+            results.push({
+                title: 'Browser Connection Type',
+                content: navigator.connection ? 
+                    `Type: ${navigator.connection.effectiveType || 'Unknown'}\nDownlink: ${navigator.connection.downlink || 'Unknown'} Mbps` :
+                    'Connection API not supported',
+                type: 'info'
+            });
+            
+            // Check 2: DNS Prefetch
+            results.push({
+                title: 'DNS Prefetch Test',
+                content: 'Browser will use system DNS resolver (IPv4/IPv6 depends on system configuration)',
+                type: 'info'
+            });
+            
+            // Check 3: Fetch with timing
+            try {
+                const supabaseUrl = 'https://dtlylrntpvgzauqcbmfv.supabase.co';
+                const startTime = performance.now();
+                
+                const response = await fetch(supabaseUrl, {
+                    method: 'HEAD',
+                    mode: 'no-cors'
+                });
+                
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(2);
+                
+                // Get performance entries
+                const perfEntries = performance.getEntriesByName(supabaseUrl);
+                let connectionInfo = 'Connection established';
+                
+                if (perfEntries.length > 0) {
+                    const entry = perfEntries[0];
+                    connectionInfo = `
+DNS Lookup: ${(entry.domainLookupEnd - entry.domainLookupStart).toFixed(2)}ms
+TCP Connection: ${(entry.connectEnd - entry.connectStart).toFixed(2)}ms
+TLS Negotiation: ${(entry.requestStart - entry.secureConnectionStart).toFixed(2)}ms
+Total Time: ${duration}ms
+Protocol: ${entry.nextHopProtocol || 'Unknown'}`;
+                }
+                
+                results.push({
+                    title: 'Supabase Connection Test',
+                    content: connectionInfo,
+                    type: 'success'
+                });
+                
+            } catch (error) {
+                results.push({
+                    title: 'Supabase Connection Test',
+                    content: `Error: ${error.message}`,
+                    type: 'error'
+                });
+            }
+            
+            // Check 4: WebRTC to detect actual IP
+            try {
+                const pc = new RTCPeerConnection({iceServers: []});
+                pc.createDataChannel('');
+                
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                
+                const ips = new Set();
+                
+                pc.onicecandidate = (ice) => {
+                    if (!ice || !ice.candidate || !ice.candidate.candidate) return;
+                    
+                    const parts = ice.candidate.candidate.split(' ');
+                    const ip = parts[4];
+                    
+                    if (ip && ip !== '0.0.0.0') {
+                        ips.add(ip);
+                        
+                        const isIPv6 = ip.includes(':');
+                        const ipType = isIPv6 ? 'IPv6' : 'IPv4';
+                        
+                        results.push({
+                            title: `Local ${ipType} Address Detected`,
+                            content: `${ip} (${ipType})`,
+                            type: 'info'
+                        });
+                        
+                        displayResults(results);
+                    }
+                };
+                
+                setTimeout(() => {
+                    pc.close();
+                    if (ips.size === 0) {
+                        results.push({
+                            title: 'Local IP Detection',
+                            content: 'Could not detect local IPs (may be blocked by browser)',
+                            type: 'info'
+                        });
+                    }
+                    displayResults(results);
+                }, 2000);
+                
+            } catch (error) {
+                results.push({
+                    title: 'Local IP Detection',
+                    content: `WebRTC not available: ${error.message}`,
+                    type: 'info'
+                });
+            }
+            
+            // Check 5: Test Supabase API
+            try {
+                const apiUrl = 'https://dtlylrntpvgzauqcbmfv.supabase.co/rest/v1/';
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0bHlscm50cHZnemF1cWNibWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2MzEzNjQsImV4cCI6MjA3NzIwNzM2NH0.-xhbYu5IH9cxwR4iD8Ygl3Oa3YkXalFE3P-O1GIIGLw'
+                    }
+                });
+                
+                results.push({
+                    title: 'Supabase API Test',
+                    content: `Status: ${response.status} ${response.statusText}\nAPI is ${response.ok ? 'reachable' : 'unreachable'}`,
+                    type: response.ok ? 'success' : 'error'
+                });
+                
+            } catch (error) {
+                results.push({
+                    title: 'Supabase API Test',
+                    content: `Error: ${error.message}`,
+                    type: 'error'
+                });
+            }
+            
+            displayResults(results);
+        }
+        
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = results.map(r => `
+                <div class="result ${r.type}">
+                    <strong>${r.title}</strong>
+                    <pre>${r.content}</pre>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

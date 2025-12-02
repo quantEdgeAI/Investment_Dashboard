@@ -60,10 +60,10 @@ export default function PnLSymbol() {
           symbolData.totalDays += daysInTrade;
         }
 
-        // Determine win/loss based on comment
-        if (comment.includes('TP')) {
+        // Determine win/loss based on delta (profit/loss)
+        if (delta > 0) {
           symbolData.wins += 1;
-        } else if (comment.includes('SL')) {
+        } else if (delta < 0) {
           symbolData.losses += 1;
         }
       });

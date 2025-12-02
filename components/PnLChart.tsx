@@ -90,6 +90,11 @@ export default function PnLChart() {
   const winningDays = data.filter(item => item.delta > 0).length;
   const losingDays = data.filter(item => item.delta < 0).length;
   const winRate = data.length > 0 ? (winningDays / data.length) * 100 : 0;
+  
+  // Calculate today's profit
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const todayData = data.find(item => item.date === today);
+  const todayProfit = todayData ? todayData.delta : 0;
 
   const formatCurrency = (value: number) => {
     return `₹${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -116,7 +121,7 @@ export default function PnLChart() {
   return (
     <div className="space-y-4">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-card rounded-lg border border-border p-6">
           <div className="text-sm text-muted-foreground mb-1">Total P&L</div>
           <div className={`text-3xl font-bold ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -127,6 +132,12 @@ export default function PnLChart() {
           <div className="text-sm text-muted-foreground mb-1">Avg Daily P&L</div>
           <div className={`text-3xl font-bold ${avgDailyPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
             {avgDailyPnL >= 0 ? '+' : ''}{formatCurrency(avgDailyPnL)}
+          </div>
+        </div>
+        <div className="bg-card rounded-lg border border-border p-6">
+          <div className="text-sm text-muted-foreground mb-1">Today's Profit</div>
+          <div className={`text-3xl font-bold ${todayProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            {todayProfit >= 0 ? '+' : ''}{formatCurrency(todayProfit)}
           </div>
         </div>
         <div className="bg-card rounded-lg border border-border p-6">
